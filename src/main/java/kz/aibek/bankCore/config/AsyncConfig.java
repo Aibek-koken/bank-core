@@ -2,7 +2,6 @@ package kz.aibek.bankCore.config;
 
 
 import lombok.extern.slf4j.Slf4j;
-import org.hibernate.audit.spi.AuditEntityLoader;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.scheduling.annotation.EnableAsync;
@@ -36,5 +35,4 @@ public class AsyncConfig {
                 new ThreadPoolExecutor.CallerRunsPolicy()
         );
     }
-
 }

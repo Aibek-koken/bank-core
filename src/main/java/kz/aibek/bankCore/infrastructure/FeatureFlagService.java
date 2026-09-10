@@ -6,6 +6,7 @@ import org.springframework.stereotype.Service;
 @Slf4j
 @Service
 public class FeatureFlagService {
+
     private volatile boolean transfersEnabled = true;
     public boolean isTransfersEnabled(){
         return transfersEnabled;
