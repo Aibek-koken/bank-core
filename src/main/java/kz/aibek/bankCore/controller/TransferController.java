@@ -2,6 +2,8 @@ package kz.aibek.bankCore.controller;
 
 
 import jakarta.validation.Valid;
+import kz.aibek.bankCore.domain.Transaction;
+import kz.aibek.bankCore.dto.ApiResponse;
 import kz.aibek.bankCore.dto.TransferRequest;
 import kz.aibek.bankCore.result.TransactionResult;
 import kz.aibek.bankCore.service.TransferService;
@@ -22,14 +24,26 @@ public class TransferController {
     private final TransferService transferService;
 
     @PostMapping
-    public ResponseEntity<?> transfer(@Valid @RequestBody TransferRequest request){
+    public ResponseEntity<ApiResponse<?>> transfer(@Valid @RequestBody TransferRequest request){
         log.info("Запрос перевода: от {} к {} на сумму {}",
                 request.fromAccountId(), request.toAccountId(), request.amount());
-        TransactionResult result = transferService.transfer(request);
+        var result = transferService.transfer(request);
+
         return switch(result){
-            case TransactionResult.Success s -> ResponseEntity.ok().body("Успех! Id транзакции: " + s.transaction().getId());
-            case TransactionResult.Failure f -> ResponseEntity.badRequest().body("Ошибка: " + f.reason());
+            case TransactionResult.Success s -> ResponseEntity.ok(ApiResponse.ok("Перевод успешно заверщен",toDto(s.transaction())));
+            case TransactionResult.Failure f -> ResponseEntity.badRequest().body(ApiResponse.error(f.reason()));
         };
+    }
+    record TransactionDto(Long id, Long from, Long to, String amount, String status){}
+
+    private TransactionDto toDto(Transaction tx){
+        return new TransactionDto(
+                tx.getId(),
+                tx.getFromAccountId(),
+                tx.getToAccountId(),
+                tx.getAmount().toString(),
+                tx.getStatus().name()
+        );
     }
 
 }

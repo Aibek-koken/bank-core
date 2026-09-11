@@ -5,6 +5,8 @@ import jakarta.transaction.Transactional;
 import kz.aibek.bankCore.domain.Transaction;
 import kz.aibek.bankCore.domain.TransactionStatus;
 import kz.aibek.bankCore.dto.TransferRequest;
+import kz.aibek.bankCore.exception.AccountNotFoundException;
+import kz.aibek.bankCore.exception.InsufficientFundsException;
 import kz.aibek.bankCore.infrastructure.AccountLockManager;
 import kz.aibek.bankCore.infrastructure.FeatureFlagService;
 import kz.aibek.bankCore.infrastructure.TransactionIdGenerator;
@@ -84,15 +86,16 @@ public class TransferService {
     }
     @Transactional
     protected TransactionResult executeInTransaction(TransferRequest request){
-        var from = accountRepository.findById(request.fromAccountId()).orElseThrow();
-        var to = accountRepository.findById(request.toAccountId()).orElseThrow();
+        var from = accountRepository.findById(request.fromAccountId()).orElseThrow(() -> new AccountNotFoundException(request.fromAccountId()));
+        var to = accountRepository.findById(request.toAccountId()).orElseThrow(() -> new AccountNotFoundException(request.toAccountId()));
 
         if(!from.isActive() || !to.isActive()){
-            return TransactionResult.failure("Счет не активен");
+            return TransactionResult.failure("Один из счетов не активен");
         }
         if(!from.hasSufficientBalance(request.amount())){
-            return TransactionResult.failure("Не достаточно средсв");
+            throw new InsufficientFundsException(from.getId(),request.amount(),from.getBalance());
         }
+
         from.setBalance(from.getBalance().subtract(request.amount()));
         to.setBalance(to.getBalance().add(request.amount()));
 
@@ -109,9 +112,7 @@ public class TransferService {
                 .build();
         transactionRepository.save(tx);
 
-
-        auditService.logAsync("TRANSFER", from.getId(), "Списание: " + request.amount());
-        auditService.logAsync("TRANSFER", to.getId(), "Пополнение: " + request.amount());
+        auditService.logTransferAsync(from.getId(), to.getId(), request.amount().toString());
         return TransactionResult.success(tx);
 
     }
